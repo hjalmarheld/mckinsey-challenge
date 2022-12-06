@@ -13,10 +13,7 @@ from tensorflow import keras
 
 model = keras.models.load_model('data/mckinsey_1.h5')
 
-
-for state in ["download", "accepted"]:
-    if state not in st.session_state:
-        st.session_state[state] = False
+st.set_page_config(initial_sidebar_state='expanded')
 
 st.sidebar.markdown('''
     # Foodix
