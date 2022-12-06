@@ -3,9 +3,16 @@ import time
 import tempfile
 import pandas as pd
 import streamlit as st
+import tensorflow as tf
+
 from folium.plugins import Draw
 from streamlit_folium import st_folium
 from picture_fetch import *
+from tensorflow import keras
+
+
+model = keras.models.load_model('data/mckinsey_1.h5')
+
 
 for state in ["download", "accepted"]:
     if state not in st.session_state:
@@ -96,7 +103,9 @@ if st.session_state.download:
     with tempfile.TemporaryDirectory() as temp_dir:
         if not picture_path:
             picture_path = download_picture(bbox=bbox, dir_name=temp_dir + "/")
-        image_array = load_image(picture_path=picture_path)
+            picture_path = download_picture(bbox=bbox, dir_name='')
+
+        image = tf.keras.preprocessing.image.load_img(picture_path)
 
         # display image
         col3, col4 = st.columns([7, 2])
@@ -129,10 +138,27 @@ if st.session_state.download:
 #
 
 if st.session_state.accepted:
-    print(image_array.shape)
+    image = image.resize((256, 256))
+    input_arr = tf.keras.preprocessing.image.img_to_array(image)
+    input_arr = np.array([input_arr])
     with st.spinner('Wait for it...'):
-        time.sleep(5)
-    st.balloons()
-    st.markdown("We need a model now")
+        predictions = model.predict([input_arr])[0][0]
+    
+    if predictions>.5:
+        st.balloons()
+        st.markdown("""
+        It's a silo !
+        With silo probablity %s 
+        """ % predictions)
+    else:
+        st.snow()
+        st.markdown("""
+        It's not a silo !
+        With silo probablity %s 
+        """ % predictions)
+
     st.video("https://youtu.be/E8gmARGvPlI")
     st.session_state.accepted = False
+
+
+
