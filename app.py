@@ -9,10 +9,14 @@ from PIL import Image
 from models.unet_model import UNet
 from models.map_utils import final_pred
 
+
+
 from folium.plugins import Draw
 from streamlit_folium import st_folium
 from picture_fetch import *
 from tensorflow import keras
+from keras.utils import array_to_img
+
 
 
 # load mapping model
@@ -143,7 +147,7 @@ if st.session_state.download:
         # display image
         col3, col4 = st.columns([7, 2])
         with col3:
-            st.image(picture_path)
+            st.image(image.resize((4000, 4000)))
 
         with col4:
             st.markdown(
@@ -181,23 +185,27 @@ if st.session_state.accepted:
 
     covered, area, category = final_pred(input_arr/255, class_model, device)
 
-    st.image(covered)
+    col5, col6 = st.columns([7, 2])
+
+    with col5:
+        st.image(array_to_img(covered).resize((4000, 4000)))
 
 
-    print(area)
-    
-    if predictions>.5:
-        st.balloons()
-        st.markdown("""
-        It's a silo !
-        With silo probablity %s 
-        """ % predictions)
-    else:
-        st.snow()
-        st.markdown("""
-        It's not a silo !
-        With silo probablity %s 
-        """ % predictions)
+    with col6:    
+        if predictions>.5:
+            st.balloons()
+            st.markdown("It's a silo !")
+            st.markdown("With silo probablity %.2f" % predictions)
+
+            st.markdown("""
+            We classify the silo
+            storage %s, covering %.1f
+            meters.
+            """ % (category, area))
+        else:
+            st.snow()
+            st.markdown("It's not a silo !")
+            st.markdown("With silo probablity %.2f" % predictions)
 
     st.video("https://youtu.be/E8gmARGvPlI")
     st.session_state.accepted = False

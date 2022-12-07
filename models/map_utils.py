@@ -52,13 +52,13 @@ def _calcul_area(
 
 def _group(x):
     if x < 7.98742676e+01:
-        return 'Small player'
+        return 'small'
     elif x < 1.57009277e+02:
-        return 'Medium player'
+        return 'medium'
     elif x < 3.72352295e+02:
-        return 'Big player'
+        return 'big'
     else:
-        return 'Very big player'
+        return 'huge'
 
 
 def final_pred(
