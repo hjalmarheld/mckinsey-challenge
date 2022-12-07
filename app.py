@@ -35,9 +35,9 @@ import streamlit as st
 import tensorflow as tf
 from tensorflow import keras
 from keras.utils import array_to_img
-from picture_fetch import *
-from models.unet_model import UNet
-from models.map_utils import final_pred
+from utils.picture_fetch import *
+from utils.unet_model import UNet
+from utils.map_utils import final_pred
 from streamlit_folium import st_folium
 
 
