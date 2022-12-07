@@ -4,6 +4,7 @@ from PIL import Image
 import folium
 from folium.plugins import Draw
 import pandas as pd
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 def draw_map():
     m = folium.Map(location=[47.0810, 4.3988], zoom_start=5.7)
@@ -67,3 +68,23 @@ def load_image(picture_path):
     img = img.resize((256, 256))
     data = np.asarray(img, dtype="int32")
     return data
+
+
+def preprocess_class(test_image):
+    x = test_image.copy()
+    test_datagen = ImageDataGenerator(
+        rescale=1./255,
+        featurewise_center=True,
+        featurewise_std_normalization=True)
+
+    test_datagen.mean = np.array(
+        [0.18298785, 0.18298785, 0.18298785],
+        dtype=np.float32
+        ).reshape((1,1,3)) # ordering: [R, G, B]
+
+    test_datagen.std = np.array(
+        [0.2052155,  0.19940454, 0.17583372],
+        dtype=np.float32
+        ).reshape((1,1,3))
+
+    return  test_datagen.standardize(x)

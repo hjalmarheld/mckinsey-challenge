@@ -202,8 +202,9 @@ if st.session_state.accepted:
     # spinning waiter while modelling
     with st.spinner("Wait for it..."):
         # classification model
+        class_arrary = preprocess_class(input_arr)
         predictions = model.predict(
-            [np.array([input_arr])])[0][0]
+            [np.array([class_arrary])])[0][0]
 
         # mapping model
         covered, area, category = final_pred(
