@@ -97,7 +97,7 @@ st.sidebar.markdown(
 """)
 
 # picture upload, set state if yes
-if picture_path := st.sidebar.file_uploader(label=""):
+if picture_path := st.sidebar.file_uploader(label="Upload"):
     st.session_state.download = True
 
 
