@@ -8,7 +8,7 @@ streamlit = "*"
 folium = "*"
 streamlit-folium = "*"
 pandas = "*"
-tensorflow-macos = "*"
+tensorflow = "*"
 torch = "*"
 torchvision = "*"
 
