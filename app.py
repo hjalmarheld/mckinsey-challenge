@@ -28,7 +28,6 @@
 #   - Await confirmation for modelling
 #
 
-import config
 import torch
 import tempfile
 import streamlit as st
@@ -45,7 +44,7 @@ from streamlit_folium import st_folium
 # ------------------------------
 
 # load keras classification model
-model = keras.models.load_model(config.keras_model)
+model = keras.models.load_model('utils/class_model.h5')
 
 # import torch mppaing architechture
 mapping_model = UNet(
@@ -60,7 +59,8 @@ mapping_model = UNet(
 )
 
 # load weights for mapping model
-model_weights = torch.load(config.mapping_weights)
+weights_path = 'utils/mapping_weights.pt'
+model_weights = torch.load(weights_path)
 mapping_model.load_state_dict(model_weights)
 
 # expand sidebar
