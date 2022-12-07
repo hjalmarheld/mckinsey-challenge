@@ -9,7 +9,6 @@ folium = "*"
 streamlit-folium = "*"
 pandas = "*"
 tensorflow = "*"
-torch = "*"
 torchvision = "*"
 
 [dev-packages]
