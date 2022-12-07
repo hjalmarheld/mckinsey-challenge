@@ -1,9 +1,13 @@
 import folium
-import time
 import tempfile
+import torch
+import pathlib
 import pandas as pd
 import streamlit as st
 import tensorflow as tf
+from PIL import Image
+from models.unet_model import UNet
+from models.map_utils import final_pred
 
 from folium.plugins import Draw
 from streamlit_folium import st_folium
@@ -11,7 +15,34 @@ from picture_fetch import *
 from tensorflow import keras
 
 
+# load mapping model
+if torch.cuda.is_available():
+    device = torch.device('cuda')
+else:
+    device = torch.device('cpu')
+
+
+
+# load classing model
 model = keras.models.load_model('data/mckinsey_1.h5')
+
+
+# model
+class_model = UNet(
+    in_channels=3,
+    out_channels=2,
+    n_blocks=4,
+    start_filters=32,
+    activation='relu',
+    normalization='batch',
+    conv_mode='same',
+    dim=2
+)
+
+model_name = 'models/segmentation_weight_augmented.pt'
+model_weights = torch.load(pathlib.Path.cwd() / model_name)
+
+class_model.load_state_dict(model_weights)
 
 for state in ["download", "accepted"]:
     if state not in st.session_state:
@@ -37,6 +68,7 @@ st.sidebar.markdown('''
 
 if picture_path:=st.sidebar.file_uploader(label=''):
     st.session_state.download=True
+
 
 #
 # Creates the folium map
@@ -105,7 +137,6 @@ if st.session_state.download:
     with tempfile.TemporaryDirectory() as temp_dir:
         if not picture_path:
             picture_path = download_picture(bbox=bbox, dir_name=temp_dir + "/")
-            picture_path = download_picture(bbox=bbox, dir_name='')
 
         image = tf.keras.preprocessing.image.load_img(picture_path)
 
@@ -142,9 +173,18 @@ if st.session_state.download:
 if st.session_state.accepted:
     image = image.resize((256, 256))
     input_arr = tf.keras.preprocessing.image.img_to_array(image)
-    input_arr = np.array([input_arr])
+
     with st.spinner('Wait for it...'):
-        predictions = model.predict([input_arr])[0][0]
+        predictions = model.predict(
+            [np.array([input_arr])]
+            )[0][0]
+
+    covered, area, category = final_pred(input_arr/255, class_model, device)
+
+    st.image(covered)
+
+
+    print(area)
     
     if predictions>.5:
         st.balloons()

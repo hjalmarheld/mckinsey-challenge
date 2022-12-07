@@ -14,10 +14,10 @@ def draw_square(coords: list):
         [
             str(round(cord, 6))
             for cord in [
-                lat - 0.001,
-                long - 0.001,
-                lat + 0.001,
-                long + 0.001,
+                lat - 0.0008,
+                long - 0.0008,
+                lat + 0.0008,
+                long + 0.0008,
             ]
         ]
     )
