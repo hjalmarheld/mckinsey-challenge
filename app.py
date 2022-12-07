@@ -72,7 +72,7 @@ st.set_page_config(initial_sidebar_state="expanded")
 # 
 # - accepted confirms whether a user 
 #   clicks yes to analyse a picture
-for state in ["download", "accepted"]:
+for state in ["download", "accepted", "snow"]:
     if state not in st.session_state:
         st.session_state[state] = False
 
@@ -237,6 +237,7 @@ if st.session_state.accepted:
             st.markdown("It's not a silo ! 😞")
             st.markdown("With silo probablity %.2f" % predictions)
 
-    if st.button("❄️"):
+    if st.button("❄️") or st.session_state.snow:
+        st.session_state.snow = True
         st.video("https://youtu.be/E8gmARGvPlI")
     st.session_state.accepted = False
