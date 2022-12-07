@@ -1,61 +1,87 @@
-import folium
-import tempfile
+#
+# This script consists of 5 parts
+#
+# 1. Loading and setting states
+#   - Import models
+#   - Set site states 
+#   - Set site configs
+#
+# 2. Sidebar
+#   - Info
+#   - Image upload
+#
+# 3. Map
+#   - Draw map
+#   - Get coordinates for download
+#   - Download image
+#
+# 4. Image processing
+#   - Download image from map OR scale upload
+#   - Convert to array
+#   - Display image
+#   - Await confirmation for modelling
+#
+# 5. Modeling
+#   - Download image from map OR scale upload
+#   - Convert to array
+#   - Display image
+#   - Await confirmation for modelling
+#
+
+import config
 import torch
-import pathlib
-import pandas as pd
+import tempfile
 import streamlit as st
 import tensorflow as tf
-from PIL import Image
-from models.unet_model import UNet
-from models.map_utils import final_pred
-
-
-
-from folium.plugins import Draw
-from streamlit_folium import st_folium
-from picture_fetch import *
 from tensorflow import keras
 from keras.utils import array_to_img
+from picture_fetch import *
+from models.unet_model import UNet
+from models.map_utils import final_pred
+from streamlit_folium import st_folium
 
 
+# 1. Loading and setting states
+# ------------------------------
 
-# load mapping model
-if torch.cuda.is_available():
-    device = torch.device('cuda')
-else:
-    device = torch.device('cpu')
+# load keras classification model
+model = keras.models.load_model(config.keras_model)
 
-
-
-# load classing model
-model = keras.models.load_model('data/mckinsey_1.h5')
-
-
-# model
-class_model = UNet(
+# import torch mppaing architechture
+mapping_model = UNet(
     in_channels=3,
     out_channels=2,
     n_blocks=4,
     start_filters=32,
-    activation='relu',
-    normalization='batch',
-    conv_mode='same',
-    dim=2
+    activation="relu",
+    normalization="batch",
+    conv_mode="same",
+    dim=2,
 )
 
-model_name = 'models/segmentation_weight_augmented.pt'
-model_weights = torch.load(pathlib.Path.cwd() / model_name)
+# load weights for mapping model
+model_weights = torch.load(config.mapping_weights)
+mapping_model.load_state_dict(model_weights)
 
-class_model.load_state_dict(model_weights)
+# expand sidebar
+st.set_page_config(initial_sidebar_state="expanded")
 
+# set statefulness to negative
+# - download confirms that a picture has been
+#   been uploaded or downloaded via map
+# 
+# - accepted confirms whether a user 
+#   clicks yes to analyse a picture
 for state in ["download", "accepted"]:
     if state not in st.session_state:
         st.session_state[state] = False
 
-st.set_page_config(initial_sidebar_state='expanded')
 
+# 2. Sidebar
+# ------------------------------
 
-st.sidebar.markdown('''
+st.sidebar.markdown(
+    """
     # Foodix
 
     Use deep learning to find silos.
@@ -68,49 +94,37 @@ st.sidebar.markdown('''
     You may also upload an image of your choice below. 
 
     A size corresponding to 128x128 meters is recomended. 
-''')
+""")
 
-if picture_path:=st.sidebar.file_uploader(label=''):
-    st.session_state.download=True
+# picture upload, set state if yes
+if picture_path := st.sidebar.file_uploader(label=""):
+    st.session_state.download = True
 
 
-#
-# Creates the folium map
-#
+# 3. Map
+# ------------------------------
 
 col1, col2 = st.columns([7, 2])
 
 with col1:
     # draw map zoomed on france
-    m = folium.Map(location=[47.0810, 4.3988], zoom_start=5.7)
+    m = draw_map()
 
-    # read data on food production in France
-    data = pd.read_csv("data/regions_data.csv")
-    folium.Choropleth(
-        geo_data="data/regions.geojson",
-        data=data,
-        columns=("Regions", "Food Production"),
-        key_on="feature.properties.Region",
-        legend_name="Food Index",
-    ).add_to(m)
-
-    # allow drawing on map
-    Draw(
-        draw_options={
-            i: False
-            for i in ["polygon", "circle", "rectangle", "polyline", "circlemarker"]
-        },
-        export=True,
-    ).add_to(m)
-
-    # get dropped points on map and return coordinates
+    # if download=False return coordinates
     if not st.session_state.download:
         output = st_folium(
-            m, width=800, height=600, returned_objects=["last_active_drawing"]
+            fig=m,
+            width=800,
+            height=600,
+            returned_objects=["last_active_drawing"]
         )
+    # otherwise just diplay map
     else:
         st_folium(
-            m, width=800, height=600, returned_objects=["last_active_drawing"]
+            fig=m,
+            width=800,
+            height=600,
+            returned_objects=["last_active_drawing"]
         )
 
 with col2:
@@ -122,26 +136,29 @@ with col2:
         """
     )
 
-
-#
-# Downloads image
-#
-
-# set true state if point selected and bbox found
+# try setting square for picture download
+# if succesful, set download=True
 if not st.session_state.download:
     try:
-        bbox = draw_square(output["last_active_drawing"]["geometry"]["coordinates"])
+        bbox = draw_square(
+            output["last_active_drawing"]["geometry"]["coordinates"])
         st.session_state.download = True
     except:
         st.session_state.download = False
 
-# start if succesfully found square for image
-if st.session_state.download:
-    # download picture and save to temp dict
-    with tempfile.TemporaryDirectory() as temp_dir:
-        if not picture_path:
-            picture_path = download_picture(bbox=bbox, dir_name=temp_dir + "/")
 
+# 4. Image processing
+# ------------------------------
+
+if st.session_state.download:
+    # create tempdir for image storage 
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # if nothing uploaded, download from map
+        if not picture_path:
+            picture_path = download_picture(
+                bbox=bbox,
+                dir_name=temp_dir + "/")
+        # load image to np array
         image = tf.keras.preprocessing.image.load_img(picture_path)
 
         # display image
@@ -151,7 +168,7 @@ if st.session_state.download:
 
         with col4:
             st.markdown(
-                """Click yes if you
+                """Click **Yes** if you
                 want to analyse 
                 this area."""
             )
@@ -163,52 +180,63 @@ if st.session_state.download:
                 another image."""
             )
 
+            # await confirmation
             if st.button("Yes"):
                 st.session_state.accepted = True
 
-    # throw away image if user keeps scrolling
+    # throw away image and unset state if user keeps scrolling
+    # on map or removes uploaded picture
     st.session_state.download = False
 
 
-#
-# Apply deep learning
-#
+# 5. Modeling
+# ------------------------------
 
 if st.session_state.accepted:
+    # resize to fit models
     image = image.resize((256, 256))
+
+    # convert to np.array
     input_arr = tf.keras.preprocessing.image.img_to_array(image)
 
-    with st.spinner('Wait for it...'):
+    # spinning waiter while modelling
+    with st.spinner("Wait for it..."):
+        # classification model
         predictions = model.predict(
-            [np.array([input_arr])]
-            )[0][0]
+            [np.array([input_arr])])[0][0]
 
-    covered, area, category = final_pred(input_arr/255, class_model, device)
+        # mapping model
+        covered, area, category = final_pred(
+            img=input_arr / 255,
+            model=mapping_model,
+            device=torch.device("cpu"))
 
     col5, col6 = st.columns([7, 2])
 
+    # show picture with overlaid map
     with col5:
         st.image(array_to_img(covered).resize((4000, 4000)))
 
-
-    with col6:    
-        if predictions>.5:
+    # show our predictions
+    with col6:
+        if predictions > 0.5:
             st.balloons()
-            st.markdown("It's a silo !")
+            st.markdown("It's a silo ! 🌾")
             st.markdown("With silo probablity %.2f" % predictions)
 
-            st.markdown("""
+            st.markdown(
+                """
             We classify the silo
             storage %s, covering %.1f
-            meters.
-            """ % (category, area))
+            square meters.
+            """
+                % (category, area)
+            )
         else:
             st.snow()
-            st.markdown("It's not a silo !")
+            st.markdown("It's not a silo ! 😞")
             st.markdown("With silo probablity %.2f" % predictions)
 
-    st.video("https://youtu.be/E8gmARGvPlI")
+    if st.button("❄️"):
+        st.video("https://youtu.be/E8gmARGvPlI")
     st.session_state.accepted = False
-
-
-

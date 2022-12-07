@@ -1,6 +1,32 @@
 import urllib.request
 import numpy as np
 from PIL import Image
+import folium
+from folium.plugins import Draw
+import pandas as pd
+
+def draw_map():
+    m = folium.Map(location=[47.0810, 4.3988], zoom_start=5.7)
+
+    # read data on food production in France
+    data = pd.read_csv("data/regions_data.csv")
+    folium.Choropleth(
+        geo_data="data/regions.geojson",
+        data=data,
+        columns=("Regions", "Food Production"),
+        key_on="feature.properties.Region",
+        legend_name="Food Index",
+    ).add_to(m)
+
+    # allow drawing on map
+    Draw(
+        draw_options={
+            i: False
+            for i in ["polygon", "circle", "rectangle", "polyline", "circlemarker"]
+        },
+        export=True,
+    ).add_to(m)
+    return m
 
 
 def draw_square(coords: list):
